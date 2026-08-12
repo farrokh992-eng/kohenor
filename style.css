@@ -32,3 +32,28 @@
 /* v4 stability fixes */
 body{overflow-x:hidden}.site-header{isolation:isolate}.news-track{overscroll-behavior-x:contain}.modal-panel{color:var(--ink)}
 .news-cover.image-failed:before{content:"تصویر خبر";font-size:18px;color:#8b96b2}
+
+
+/* v4 targeted stability + horizontal news image viewer */
+html{overflow-x:hidden}
+body.modal-lock{position:fixed;left:0;right:0;width:100%;overflow:hidden}
+.article-gallery{display:flex;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 2px 10px;margin:22px 0;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.article-gallery::-webkit-scrollbar{display:none}
+.gallery-thumb{flex:0 0 min(72%,520px);padding:0;border:0;background:transparent;scroll-snap-align:center;cursor:pointer;border-radius:16px;overflow:hidden}
+.gallery-thumb img{width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:16px;border:1px solid var(--line);background:#f5f7fc;display:block;transition:transform .25s ease}
+.gallery-thumb:hover img{transform:scale(1.015)}
+.lightbox-panel{position:relative;z-index:1;width:min(1100px,calc(100% - 24px));height:min(88vh,760px);margin:6vh auto 0;background:#071d62;border-radius:28px;box-shadow:0 30px 90px rgba(0,0,0,.35);overflow:hidden;display:flex;align-items:center}
+.lightbox-track{width:100%;height:100%;display:flex;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.lightbox-track::-webkit-scrollbar{display:none}
+.lightbox-slide{flex:0 0 100%;height:100%;display:grid;place-items:center;scroll-snap-align:center;padding:58px 62px}
+.lightbox-slide img{max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;border-radius:16px;display:block}
+.lightbox-arrow{position:absolute;z-index:3;top:50%;transform:translateY(-50%);width:46px;height:46px;border:0;border-radius:50%;background:rgba(255,255,255,.96);color:var(--blue);font-size:36px;line-height:1;display:grid;place-items:center;cursor:pointer;box-shadow:0 10px 30px rgba(0,0,0,.22)}
+.lightbox-arrow.prev{left:14px}.lightbox-arrow.next{right:14px}.lightbox-arrow:hover{transform:translateY(-50%) scale(1.06)}
+.lightbox-panel .modal-close{z-index:4;top:14px;left:14px}
+@media(max-width:520px){
+ .gallery-thumb{flex-basis:88%}
+ .lightbox-panel{width:calc(100% - 16px);height:82vh;margin:9vh auto 0;border-radius:22px}
+ .lightbox-slide{padding:54px 42px}
+ .lightbox-arrow{width:40px;height:40px;font-size:31px}
+ .lightbox-arrow.prev{left:8px}.lightbox-arrow.next{right:8px}
+}
