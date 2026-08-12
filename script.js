@@ -11,13 +11,57 @@ const track=document.getElementById('newsTrack'),dots=document.getElementById('n
 const cfg=window.SITE_CONFIG||{};const supabaseReady=!!(cfg.supabaseUrl&&cfg.supabaseAnonKey&&window.supabase&&typeof window.supabase.createClient==='function');const sb=supabaseReady?window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey):null;
 function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
 function renderNews(){track.innerHTML=news.map((n,i)=>`<article class="news-card" data-index="${i}"><div class="news-cover">${n.images?.[0]?`<img src="${n.images[0]}" alt="${esc(n.title)}" loading="lazy" onerror="this.parentElement.classList.add('image-failed');this.remove()">`:'<span aria-hidden="true">✦</span>'}</div><div class="news-body"><time class="news-date">${esc(n.date)}</time><h3>${esc(n.title)}</h3><p>${esc(n.text)}</p></div></article>`).join('');dots.innerHTML=news.map((_,i)=>`<button aria-label="نمایش خبر ${i+1}" data-dot="${i}" class="${i===0?'active':''}"></button>`).join('');allNews.innerHTML=news.map((n,i)=>`<button class="all-news-item" data-index="${i}"><div><time>${esc(n.date)}</time><h3>${esc(n.title)}</h3><p>${esc(n.text)}</p></div><span aria-hidden="true">←</span></button>`).join('')}
-function openModal(id){const m=document.getElementById(id);m.classList.add('open');m.setAttribute('aria-hidden','false');document.body.style.overflow='hidden'}function closeModal(id){const m=document.getElementById(id);m.classList.remove('open');m.setAttribute('aria-hidden','true');document.body.style.overflow=''}
-function showArticle(i){const n=news[i];const gallery=n.images?.length?`<div class="article-gallery">${n.images.map((src,j)=>`<img src="${src}" alt="${esc(n.title)} - تصویر ${j+1}" loading="lazy">`).join('')}</div>`:'';articleContent.innerHTML=`<span class="eyebrow">خبر شرکت تعاونی</span><h2>${esc(n.title)}</h2><div class="article-meta">تاریخ انتشار: ${esc(n.date)}</div>${gallery}<p>${esc(n.body)}</p>`;openModal('articleModal')}
-function showContent(slug){const c=content[slug];document.getElementById('contentModalBody').innerHTML=`<div class="content-modal-body"><span class="eyebrow">معرفی</span><h2>${esc(c.title)}</h2><p>${esc(c.body)}</p></div>`;openModal('contentModal')}
-function setActiveDot(i){activeNews=i;dots.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('active',j===i))}function goToNews(i){if(!news.length)return;i=(i+news.length)%news.length;const card=track.querySelector(`[data-index="${i}"]`);if(!card)return;activeNews=i;card.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});setActiveDot(i)}function restartTimer(){clearInterval(timer);timer=setInterval(()=>goToNews(activeNews+1),5000)}
+let lockedScrollY=0;
+function lockPage(){
+  if(document.body.classList.contains('modal-lock')) return;
+  lockedScrollY=window.scrollY||window.pageYOffset||0;
+  document.body.classList.add('modal-lock');
+  document.body.style.top=`-${lockedScrollY}px`;
+}
+function unlockPage(){
+  document.body.classList.remove('modal-lock');
+  document.body.style.top='';
+  window.scrollTo(0,lockedScrollY);
+}
+function openModal(id){const m=document.getElementById(id);if(!m)return;m.classList.add('open');m.setAttribute('aria-hidden','false');if(id!=='imageLightbox')lockPage()}
+function closeModal(id){const m=document.getElementById(id);if(!m)return;m.classList.remove('open');m.setAttribute('aria-hidden','true');if(id==='imageLightbox'){return}if(!document.querySelector('.modal.open'))unlockPage()}
+let currentGallery=[];
+function showArticle(i){
+ const n=news[i]; currentGallery=n.images||[];
+ const gallery=currentGallery.length?`<div class="article-gallery" aria-label="تصاویر خبر">${currentGallery.map((src,j)=>`<button class="gallery-thumb" type="button" data-image-index="${j}" aria-label="نمایش تصویر ${j+1}"><img src="${src}" alt="${esc(n.title)} - تصویر ${j+1}" loading="lazy"></button>`).join('')}</div>`:'';
+ articleContent.innerHTML=`<span class="eyebrow">خبر شرکت تعاونی</span><h2>${esc(n.title)}</h2><div class="article-meta">تاریخ انتشار: ${esc(n.date)}</div>${gallery}<p>${esc(n.body)}</p>`;
+ openModal('articleModal');
+}
+function showContent(slug){const c=content[slug];document.getElementById('contentModalBody').innerHTML=`<div class="content-modal-body"><span class="eyebrow">معرفی</span><h2>${esc(c.title)}</h2><div class="article-meta">متن کامل</div><p>${esc(c.body)}</p></div>`;openModal('contentModal')}
+function setActiveDot(i){activeNews=i;dots.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('active',j===i))}function goToNews(i){i=(i+news.length)%news.length;const card=track.querySelector(`[data-index="${i}"]`);if(!card)return;activeNews=i;track.scrollTo({left:card.offsetLeft-(track.clientWidth-card.offsetWidth)/2,behavior:'smooth'});setActiveDot(i)}function restartTimer(){clearInterval(timer);timer=setInterval(()=>goToNews(activeNews+1),5000)}
 async function loadRemote(){if(!sb)return;try{const cr=await sb.from('site_content').select('*').in('slug',['ashayer','cooperative']);if(!cr.error)cr.data.forEach(x=>{content[x.slug]=x});document.getElementById('ashayerExcerpt').textContent=content.ashayer.excerpt;document.getElementById('cooperativeExcerpt').textContent=content.cooperative.excerpt;const nr=await sb.from('news').select('*').order('created_at',{ascending:false});if(!nr.error&&nr.data?.length){news=nr.data.map(n=>({...n,images:Array.isArray(n.images)?n.images:[]}));renderNews();goToNews(0);restartTimer()}}catch(e){console.warn('Remote content unavailable',e)}}
 renderNews();document.getElementById('ashayerExcerpt').textContent=content.ashayer.excerpt;document.getElementById('cooperativeExcerpt').textContent=content.cooperative.excerpt;
-document.querySelectorAll('.menu-card').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.target)?.scrollIntoView({behavior:'smooth',block:'start'}));document.querySelectorAll('.read-more').forEach(b=>b.onclick=()=>showContent(b.dataset.content));document.getElementById('openNews').onclick=()=>openModal('newsModal');document.getElementById('nextNews').onclick=()=>{goToNews(activeNews+1);restartTimer()};document.getElementById('prevNews').onclick=()=>{goToNews(activeNews-1);restartTimer()};dots.onclick=e=>{if(e.target.dataset.dot!==undefined){goToNews(Number(e.target.dataset.dot));restartTimer()}};track.onclick=e=>{const c=e.target.closest('.news-card');if(c)showArticle(Number(c.dataset.index))};allNews.onclick=e=>{const c=e.target.closest('.all-news-item');if(c)showArticle(Number(c.dataset.index))};document.addEventListener('click',e=>{const c=e.target.closest('[data-close]');if(c)closeModal(c.dataset.close)});document.addEventListener('keydown',e=>{if(e.key==='Escape'){['newsModal','articleModal','contentModal'].forEach(closeModal)}if(e.key==='ArrowLeft')goToNews(activeNews+1);if(e.key==='ArrowRight')goToNews(activeNews-1)});track.addEventListener('pointerdown',()=>clearInterval(timer));track.addEventListener('pointerup',restartTimer);track.addEventListener('touchend',restartTimer,{passive:true});
-track.addEventListener('scroll',()=>{const cards=[...track.querySelectorAll('.news-card')];if(!cards.length)return;const rect=track.getBoundingClientRect(),center=rect.left+rect.width/2;let best=0,dist=Infinity;cards.forEach((c,i)=>{const r=c.getBoundingClientRect(),d=Math.abs(r.left+r.width/2-center);if(d<dist){dist=d;best=i}});setActiveDot(best)},{passive:true});
-
+document.querySelectorAll('.menu-card').forEach(b=>b.onclick=()=>document.getElementById(b.dataset.target)?.scrollIntoView({behavior:'smooth',block:'start'}));document.querySelectorAll('.read-more').forEach(b=>b.onclick=()=>showContent(b.dataset.content));document.getElementById('openNews').onclick=()=>openModal('newsModal');document.getElementById('nextNews').onclick=()=>{goToNews(activeNews+1);restartTimer()};document.getElementById('prevNews').onclick=()=>{goToNews(activeNews-1);restartTimer()};dots.onclick=e=>{if(e.target.dataset.dot!==undefined){goToNews(Number(e.target.dataset.dot));restartTimer()}};track.onclick=e=>{const c=e.target.closest('.news-card');if(c)showArticle(Number(c.dataset.index))};allNews.onclick=e=>{const c=e.target.closest('.all-news-item');if(c)showArticle(Number(c.dataset.index))};document.addEventListener('click',e=>{
+ const c=e.target.closest('[data-close]'); if(c) closeModal(c.dataset.close);
+ const g=e.target.closest('[data-image-index]'); if(g){openImageLightbox(Number(g.dataset.imageIndex));}
+});
+function openImageLightbox(index){
+ const viewport=document.getElementById('lightboxTrack'); if(!viewport||!currentGallery.length)return;
+ viewport.innerHTML=currentGallery.map((src,j)=>`<div class="lightbox-slide"><img src="${src}" alt="تصویر ${j+1}"></div>`).join('');
+ openModal('imageLightbox');
+ requestAnimationFrame(()=>{const slide=viewport.children[index]; if(slide) viewport.scrollTo({left:slide.offsetLeft,behavior:'auto'});});
+}
+document.addEventListener('keydown',e=>{
+ if(e.key==='Escape'){['imageLightbox','newsModal','articleModal','contentModal'].forEach(closeModal)}
+ if(document.getElementById('imageLightbox')?.classList.contains('open')){
+   if(e.key==='ArrowLeft') moveLightbox(1);
+   if(e.key==='ArrowRight') moveLightbox(-1);
+   return;
+ }
+ if(e.key==='ArrowLeft')goToNews(activeNews+1);
+ if(e.key==='ArrowRight')goToNews(activeNews-1);
+});
+function moveLightbox(dir){
+ const v=document.getElementById('lightboxTrack'); if(!v)return;
+ const step=v.clientWidth; v.scrollBy({left:dir*step,behavior:'smooth'});
+}
+document.getElementById('lightboxNext').onclick=()=>moveLightbox(-1);
+document.getElementById('lightboxPrev').onclick=()=>moveLightbox(1);
+track.addEventListener('pointerdown',()=>clearInterval(timer));track.addEventListener('pointerup',restartTimer);track.addEventListener('touchend',restartTimer,{passive:true});
+track.addEventListener('scroll',()=>{const cards=[...track.querySelectorAll('.news-card')];if(!cards.length)return;const center=track.scrollLeft+track.clientWidth/2;let best=0,dist=Infinity;cards.forEach((c,i)=>{const d=Math.abs(c.offsetLeft+c.offsetWidth/2-center);if(d<dist){dist=d;best=i}});setActiveDot(best)},{passive:true});
 function renderDoc(i=0){const d=docs[i];viewer.innerHTML=`<img src="${d.url}" alt="${esc(d.title)}" loading="lazy"><div class="document-caption"><strong>${esc(d.title)}</strong><br>تصویر سند رسمی ارائه‌شده در بخش اسناد و مدارک.</div>`;document.querySelectorAll('.document-tab').forEach((b,j)=>b.classList.toggle('active',j===i))}document.querySelectorAll('.document-tab').forEach(b=>b.onclick=()=>renderDoc(Number(b.dataset.doc)));renderDoc();restartTimer();loadRemote();
